@@ -25,12 +25,16 @@ export const register = async (req, res) => {
 
     // We generate the verification token here
     const verificationToken = crypto.randomBytes(32).toString('hex')
+    const verificationTokenHash = crypto
+      .createHash('sha256')
+      .update(verificationToken)
+      .digest('hex')
 
     const newUser = new User({
       name,
       email,
       password, // Mongoose middleware will hash this
-      verificationToken,
+      verificationToken: verificationTokenHash,
       verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
     })
 
@@ -70,7 +74,7 @@ export const register = async (req, res) => {
     })
   } catch (error) {
     console.error('Registration error:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error' })
   }
 }
 
@@ -114,13 +118,16 @@ export const login = async (req, res) => {
     })
   } catch (error) {
     console.error('Login error:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error' })
   }
 }
 
 export const verifyEmail = async (req, res) => {
   const { token } = req.query
-  console.log(token)
+  const verificationTokenHash = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex')
 
   try {
     if (!token) {
@@ -129,7 +136,7 @@ export const verifyEmail = async (req, res) => {
 
     // Find user with this token AND ensure token hasn't expired
     const user = await User.findOne({
-      verificationToken: token,
+      verificationToken: verificationTokenHash,
       verificationTokenExpires: { $gt: Date.now() }, // $gt means "Greater Than" now
     })
 
