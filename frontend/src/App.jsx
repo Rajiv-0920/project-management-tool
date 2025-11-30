@@ -1,17 +1,7 @@
-import { Button, Typography } from '@mui/material'
+import React from 'react'
 
-function App() {
-  return (
-    <div style={{ padding: 20 }}>
-      <Typography variant='h4' gutterBottom>
-        Hello from Material UI + Vite!
-      </Typography>
-
-      <Button variant='contained' color='primary'>
-        MUI Button
-      </Button>
-    </div>
-  )
+const App = () => {
+  return <div>App</div>
 }
 
 export default App
