@@ -2,9 +2,12 @@ import express from 'express'
 import 'dotenv/config'
 import path from 'path'
 import cors from 'cors'
+import helmet from 'helmet'
+
+import connectDB from './src/config/db.js'
+import { app, server } from './src/config/socket.js'
 
 // Initialize Express app
-const app = express()
 const PORT = process.env.PORT || 3000
 
 // Resolve __dirname for ES modules
@@ -12,6 +15,8 @@ const __dirname = path.resolve()
 
 // Middleware
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
+app.use(helmet())
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
@@ -20,7 +25,7 @@ app.use(
 )
 
 // Sample route
-app.get('/', (req, res) => {
+app.get('/root', (req, res) => {
   res.send('Server is running')
 })
 
@@ -33,6 +38,15 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
-})
+const startServer = async () => {
+  try {
+    await connectDB()
+    server.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`)
+    })
+  } catch (error) {
+    console.error(`Failed to start server: ${error.message}`)
+  }
+}
+
+startServer()
