@@ -3,13 +3,14 @@ import 'dotenv/config'
 import path from 'path'
 import cors from 'cors'
 import helmet from 'helmet'
+import cookieParser from 'cookie-parser'
 import mongoose from 'mongoose'
 
 import connectDB from './src/config/db.js'
 import { app, server } from './src/config/socket.js'
 import authRoutes from './src/routes/auth.route.js'
 import userRoutes from './src/routes/users.route.js'
-import cookieParser from 'cookie-parser'
+import boardRoutes from './src/routes/boards.route.js'
 
 // Initialize Express app
 const PORT = process.env.PORT || 3000
@@ -31,6 +32,7 @@ app.use(
 
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/boards', boardRoutes)
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
