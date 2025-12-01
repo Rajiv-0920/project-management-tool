@@ -6,7 +6,7 @@ export const getAllBoards = async (req, res) => {
   try {
     const { organizationId } = req.query
     const query = {
-      $or: [{ owner: req.user.id }, { 'members.userId': req.user.id }],
+      $or: [{ owner: req.user._id }, { 'members.userId': req.user._id }],
     }
     if (organizationId) {
       query.organizationId = organizationId
@@ -39,13 +39,13 @@ export const createBoard = async (req, res) => {
     const board = new Board({
       title,
       description,
-      owner: req.user.id,
+      owner: req.user._id,
       organizationId: orgId,
       background,
       columns,
     })
 
-    board.members.push({ userId: req.user.id, role: 'admin' })
+    board.members.push({ userId: req.user._id, role: 'admin' })
 
     await board.save()
     res.status(201).json(board)
@@ -85,7 +85,7 @@ export const updateBoard = async (req, res) => {
     }
 
     // Check if the user is the owner
-    if (!board.owner.equals(req.user.id)) {
+    if (!board.owner.equals(req.user._id)) {
       return res.status(403).json({ message: 'Access denied' })
     }
 
@@ -111,7 +111,7 @@ export const deleteBoard = async (req, res) => {
     }
 
     // Check if the user is the owner
-    if (!board.owner.equals(req.user.id)) {
+    if (!board.owner.equals(req.user._id)) {
       return res.status(403).json({ message: 'Access denied' })
     }
 
@@ -139,9 +139,9 @@ export const listBoardMembers = async (req, res) => {
 
     // Check if the user is a member or owner
     const isMember = board.members.some((member) =>
-      member.userId._id.equals(req.user.id)
+      member.userId._id.equals(req.user._id)
     )
-    if (!board.owner.equals(req.user.id) && !isMember) {
+    if (!board.owner.equals(req.user._id) && !isMember) {
       return res.status(403).json({ message: 'Access denied' })
     }
 
@@ -162,9 +162,9 @@ export const inviteBoardMember = async (req, res) => {
 
     // Check if the user is the owner or an admin
     const isAdmin = board.members.some(
-      (member) => member.userId.equals(req.user.id) && member.role === 'admin'
+      (member) => member.userId.equals(req.user._id) && member.role === 'admin'
     )
-    if (!board.owner.equals(req.user.id) && !isAdmin) {
+    if (!board.owner.equals(req.user._id) && !isAdmin) {
       return res.status(403).json({ message: 'Access denied' })
     }
 
@@ -195,6 +195,11 @@ export const updateBoardMemberRole = async (req, res) => {
   const { id, userId } = req.params
   const { role } = req.body
   try {
+    // Validate role
+    const validRoles = ['admin', 'member']
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' })
+    }
     const board = await Board.findById(id)
     if (!board) {
       return res.status(404).json({ message: 'Board not found' })
@@ -202,9 +207,9 @@ export const updateBoardMemberRole = async (req, res) => {
 
     // Check if the user is the owner or an admin
     const isAdmin = board.members.some(
-      (member) => member.userId.equals(req.user.id) && member.role === 'admin'
+      (member) => member.userId.equals(req.user._id) && member.role === 'admin'
     )
-    if (!board.owner.equals(req.user.id) && !isAdmin) {
+    if (!board.owner.equals(req.user._id) && !isAdmin) {
       return res.status(403).json({ message: 'Access denied' })
     }
 
@@ -212,6 +217,14 @@ export const updateBoardMemberRole = async (req, res) => {
     const member = board.members.find((m) => m.userId.equals(userId))
     if (!member) {
       return res.status(404).json({ message: 'Member not found' })
+    }
+
+    // Prevent removing the last admin
+    if (member.role === 'admin' && role !== 'admin') {
+      const adminCount = board.members.filter((m) => m.role === 'admin').length
+      if (adminCount <= 1) {
+        return res.status(400).json({ message: 'Cannot remove the last admin' })
+      }
     }
 
     // Update the member's role
@@ -234,10 +247,24 @@ export const removeBoardMember = async (req, res) => {
 
     // Check if the user is the owner or an admin
     const isAdmin = board.members.some(
-      (member) => member.userId.equals(req.user.id) && member.role === 'admin'
+      (member) => member.userId.equals(req.user._id) && member.role === 'admin'
     )
-    if (!board.owner.equals(req.user.id) && !isAdmin) {
+    if (!board.owner.equals(req.user._id) && !isAdmin) {
       return res.status(403).json({ message: 'Access denied' })
+    }
+
+    // Find the member to remove
+    const memberToRemove = board.members.find((m) => m.userId.equals(userId))
+    if (!memberToRemove) {
+      return res.status(404).json({ message: 'Member not found' })
+    }
+
+    // Prevent removing the last admin
+    if (memberToRemove.role === 'admin') {
+      const adminCount = board.members.filter((m) => m.role === 'admin').length
+      if (adminCount <= 1) {
+        return res.status(400).json({ message: 'Cannot remove the last admin' })
+      }
     }
 
     // Remove the member
