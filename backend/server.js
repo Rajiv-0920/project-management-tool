@@ -8,6 +8,7 @@ import mongoose from 'mongoose'
 import connectDB from './src/config/db.js'
 import { app, server } from './src/config/socket.js'
 import authRoutes from './src/routes/auth.route.js'
+import userRoutes from './src/routes/users.route.js'
 import cookieParser from 'cookie-parser'
 
 // Initialize Express app
@@ -29,6 +30,7 @@ app.use(
 )
 
 app.use('/api/auth', authRoutes)
+app.use('/api/users', userRoutes)
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
