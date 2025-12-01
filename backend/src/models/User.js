@@ -25,8 +25,8 @@ const UserSchema = new mongoose.Schema(
     },
 
     avatar: {
-      publicId: { type: String }, // for cloudinary or S3
-      url: { type: String }, // actual image URL
+      type: String, // actual image URL
+      default: '',
     },
 
     bio: {
