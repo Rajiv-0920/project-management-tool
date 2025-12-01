@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import User from '../models/User.js'
 import { generateToken } from '../utils/generateToken.js'
 import sendEmail from '../utils/sendEmail.js'
+import cloudinary from '../config/cloudinary.js'
 
 export const register = async (req, res) => {
   const { name, email, password } = req.body
@@ -187,6 +188,54 @@ export const getMyProfile = async (req, res) => {
     res.status(200).json({ user })
   } catch (error) {
     console.error('Get profile error:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export const updateMyProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('+password')
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    // 1. Handle Text Fields
+    if (req.body.name) user.name = req.body.name
+    if (req.body.bio) user.bio = req.body.bio
+
+    // 2. Handle Image Upload (The Cloudinary Part)
+    if (req.file) {
+      // Create a promise to handle the stream upload
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: 'user_avatars' }, // Optional: organize in a folder
+          (error, result) => {
+            if (error) return reject(error)
+            resolve(result)
+          }
+        )
+        // Write the buffer to the stream
+        stream.end(req.file.buffer)
+      })
+
+      // Save the Cloudinary URL to the user document
+      user.avatar = uploadResult.secure_url
+    }
+
+    await user.save()
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        bio: user.bio,
+        avatar: user.avatar, // Return the new image URL
+      },
+    })
+  } catch (error) {
+    console.error('Update profile error:', error)
     res.status(500).json({ message: 'Server error' })
   }
 }
