@@ -104,22 +104,53 @@ export const updateBoard = async (req, res) => {
 
 export const deleteBoard = async (req, res) => {
   const { id } = req.params
+  const userId = req.user._id
   try {
     const board = await Board.findById(id)
     if (!board) {
       return res.status(404).json({ message: 'Board not found' })
     }
 
-    // Check if the user is the owner
-    if (!board.owner.equals(req.user._id)) {
+    // Check permissions
+    const isAdmin = board.members.some(
+      (member) => member.userId.equals(userId) && member.role === 'admin'
+    )
+    if (!board.owner.equals(userId) && !isAdmin) {
       return res.status(403).json({ message: 'Access denied' })
     }
 
-    // Soft delete: mark the board as archived
-    board.isArchived = true
+    // Hard delete: mark the board as archived
+    await board.deleteOne()
+
+    res.status(200).json({ message: 'Board deleted successfully' })
+  } catch (error) {
+    console.error('Error deleting board:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export const archiveBoard = async (req, res) => {
+  const { id } = req.params
+  const userId = req.user._id
+  try {
+    const board = await Board.findById(id)
+    if (!board) {
+      return res.status(404).json({ message: 'Board not found' })
+    }
+
+    // Permission check
+    const isAdmin = board.members.some(
+      (member) => member.userId.equals(userId) && member.role === 'admin'
+    )
+    if (!board.owner.equals(userId) && !isAdmin) {
+      return res.status(403).json({ message: 'Access denied' })
+    }
+
+    board.isArchived = !board.isArchived
+
     await board.save()
 
-    res.status(200).json({ message: 'Board archived successfully' })
+    res.status(200).json({ message: 'Board archived successfully', board })
   } catch (error) {
     console.error('Error deleting board:', error)
     res.status(500).json({ message: 'Server error' })

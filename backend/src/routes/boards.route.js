@@ -2,6 +2,7 @@ import express from 'express'
 import protect from '../middleware/auth.js'
 import {
   addColumn,
+  archiveBoard,
   createBoard,
   deleteBoard,
   deleteColumn,
@@ -54,6 +55,13 @@ router.put('/:id', protect, updateBoard)
  * @access  Private
  */
 router.delete('/:id', protect, deleteBoard)
+
+/**
+ * @route   PATCH /boards/:id/archive
+ * @desc    Archive a specific board by ID (requires authentication)
+ * @access  Private
+ */
+router.patch('/:id/archive', protect, archiveBoard)
 
 // ----------------------------------
 // ------- Member Management --------
