@@ -351,15 +351,10 @@ export const updateColumn = async (req, res) => {
     }
 
     // Check for position conflicts
-    if (position !== undefined && position !== column.position) {
-      const isPositionTaken = board.columns.some(
-        (col) => col.position === position && !col._id.equals(columnId)
-      )
-      if (isPositionTaken) {
-        return res
-          .status(400)
-          .json({ message: 'Column position already taken' })
-      }
+    const pos = position ?? 0
+
+    if (board.columns.some((col) => col.position === pos)) {
+      return res.status(400).json({ message: 'Column position already taken' })
     }
 
     // Update the column
