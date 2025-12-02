@@ -151,6 +151,7 @@ export const listBoardMembers = async (req, res) => {
     res.status(500).json({ message: 'Server error' })
   }
 }
+
 export const inviteBoardMember = async (req, res) => {
   const { id } = req.params
   const { email, role } = req.body
@@ -191,6 +192,7 @@ export const inviteBoardMember = async (req, res) => {
     res.status(500).json({ message: 'Server error' })
   }
 }
+
 export const updateBoardMemberRole = async (req, res) => {
   const { id, userId } = req.params
   const { role } = req.body
@@ -237,6 +239,7 @@ export const updateBoardMemberRole = async (req, res) => {
     res.status(500).json({ message: 'Server error' })
   }
 }
+
 export const removeBoardMember = async (req, res) => {
   const { id, userId } = req.params
   try {
@@ -277,5 +280,135 @@ export const removeBoardMember = async (req, res) => {
   } catch (error) {
     console.error('Error removing board member:', error)
     res.status(500).json({ message: 'Server error' })
+  }
+}
+
+/**
+ * @route   POST /boards/:id/columns
+ * @desc    Add a new column to a specific board (requires authentication)
+ * @access  Private
+ */
+export const addColumn = async (req, res) => {
+  const { id } = req.params
+  const userId = req.user._id
+  const { title, position } = req.body
+
+  try {
+    const board = await Board.findById(id)
+    if (!board) return res.status(404).json({ message: 'Board not found' })
+
+    const isAdmin = board.members.some(
+      (member) => member.userId.equals(userId) && member.role === 'admin'
+    )
+    if (!board.owner.equals(userId) && !isAdmin) {
+      return res.status(403).json({ message: 'Access denied' })
+    }
+
+    const pos = position ?? 0
+
+    if (board.columns.some((col) => col.position === pos)) {
+      return res.status(400).json({ message: 'Column position already taken' })
+    }
+
+    board.columns.push({ title, position: pos })
+
+    await board.save()
+    res.status(201).json(board)
+  } catch (error) {
+    console.error('Error adding column:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+/**
+ * @route   PUT /boards/:id/columns/:columnId
+ * @desc    Update a specific column in a board (requires authentication)
+ * @access  Private
+ */
+export const updateColumn = async (req, res) => {
+  const { id, columnId } = req.params
+  const userId = req.user._id
+  const { title, position } = req.body
+
+  try {
+    const board = await Board.findById(id)
+    if (!board) {
+      return res.status(404).json({ message: 'Board not found' })
+    }
+
+    // Check if the user is the owner or an admin
+    const isAdmin = board.members.some(
+      (member) => member.userId.equals(userId) && member.role === 'admin'
+    )
+    if (!board.owner.equals(userId) && !isAdmin) {
+      return res.status(403).json({ message: 'Access denied' })
+    }
+
+    // Find the column to update
+    const column = board.columns.id(columnId)
+    if (!column) {
+      return res.status(404).json({ message: 'Column not found' })
+    }
+
+    // Check for position conflicts
+    const pos = position ?? 0
+
+    if (board.columns.some((col) => col.position === pos)) {
+      return res.status(400).json({ message: 'Column position already taken' })
+    }
+
+    // Update the column
+    column.title = title || column.title
+    if (position !== undefined) {
+      column.position = position
+    }
+
+    await board.save()
+    res.status(200).json(board)
+  } catch (error) {
+    console.error('Error updating column:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+/**
+ * @route   DELETE /boards/:id/columns/:columnId
+ * @desc    Delete a specific column from a board (requires authentication)
+ * @access  Private
+ */
+export const deleteColumn = async (req, res) => {
+  const { id, columnId } = req.params
+  const userId = req.user._id
+
+  try {
+    const board = await Board.findById(id)
+    if (!board) {
+      return res.status(404).json({ message: 'Board not found' })
+    }
+
+    // Check if the user is the owner or an admin
+    const isAdmin = board.members.some(
+      (member) => member.userId.equals(userId) && member.role === 'admin'
+    )
+    if (!board.owner.equals(userId) && !isAdmin) {
+      return res.status(403).json({ message: 'Access denied' })
+    }
+
+    // Find the column to delete
+    const columnIndex = board.columns.findIndex((column) =>
+      column._id.equals(columnId)
+    )
+    if (columnIndex === -1) {
+      return res.status(404).json({ message: 'Column not found' })
+    }
+
+    // Remove the column
+    board.columns.splice(columnIndex, 1)
+    await board.save()
+
+    res.status(200).json({ message: 'Column deleted successfully', board })
+  } catch (error) {
+    console.error('Error deleting column:', error)
+    return res.status(500).json({ message: 'Server error' })
   }
 }
