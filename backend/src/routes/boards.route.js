@@ -4,9 +4,12 @@ import {
   addColumn,
   archiveBoard,
   createBoard,
+  createTask,
   deleteBoard,
   deleteColumn,
   getAllBoards,
+  getAllLabels,
+  getAllTasks,
   getBoard,
   inviteBoardMember,
   listBoardMembers,
@@ -15,108 +18,119 @@ import {
   updateBoardMemberRole,
   updateColumn,
 } from '../controllers/boardController.js'
+import { checkBoardAccess } from '../middleware/checkBoardAccess.js'
 
 const router = express.Router()
 
 // ----------------------------------
 // --------- Boards Routes ----------
 // ----------------------------------
-/**
- * @route   GET /boards
- * @desc    Retrieve all boards (requires authentication)
- * @access  Private
- */
+
 router.get('/', protect, getAllBoards)
 
-/**
- * @route   POST /boards
- * @desc    Create a new board (requires authentication)
- * @access  Private
- */
-router.post('/', protect, createBoard)
+router.post(
+  '/',
+  protect,
+  createBoard // Creating a board usually requires no board-level access
+)
 
-/**
- * @route   GET /boards/:id
- * @desc    Retrieve a specific board by ID (requires authentication)
- * @access  Private
- */
-router.get('/:id', protect, getBoard)
+router.get(
+  '/:id',
+  protect,
+  checkBoardAccess(['admin', 'member', 'viewer']),
+  getBoard
+)
 
-/**
- * @route   PUT /boards/:id
- * @desc    Update a specific board by ID (requires authentication)
- * @access  Private
- */
-router.put('/:id', protect, updateBoard)
+router.put('/:id', protect, checkBoardAccess(['admin']), updateBoard)
 
-/**
- * @route   DELETE /boards/:id
- * @desc    Delete a specific board by ID (requires authentication)
- * @access  Private
- */
-router.delete('/:id', protect, deleteBoard)
+router.delete('/:id', protect, checkBoardAccess(['admin']), deleteBoard)
 
-/**
- * @route   PATCH /boards/:id/archive
- * @desc    Archive a specific board by ID (requires authentication)
- * @access  Private
- */
-router.patch('/:id/archive', protect, archiveBoard)
+router.patch('/:id/archive', protect, checkBoardAccess(['admin']), archiveBoard)
 
 // ----------------------------------
 // ------- Member Management --------
 // ----------------------------------
-/**
- * @route   GET /boards/:id/members
- * @desc    List all members of a specific board (requires authentication)
- * @access  Private
- */
-router.get('/:id/members', protect, listBoardMembers)
 
-/**
- * @route   POST /boards/:id/members
- * @desc    Invite a new member to a specific board (requires authentication)
- * @access  Private
- */
-router.post('/:id/members', protect, inviteBoardMember)
+router.get(
+  '/:id/members',
+  protect,
+  checkBoardAccess(['admin', 'member', 'viewer']),
+  listBoardMembers
+)
 
-/**
- * @route   PUT /boards/:id/members/:userId
- * @desc    Update a member's role in a specific board (requires authentication)
- * @access  Private
- */
-router.put('/:id/members/:userId', protect, updateBoardMemberRole)
+router.post(
+  '/:id/members',
+  protect,
+  checkBoardAccess(['admin']),
+  inviteBoardMember
+)
 
-/**
- * @route   DELETE /boards/:id/members/:userId
- * @desc    Remove a member from a specific board (requires authentication)
- * @access  Private
- */
-router.delete('/:id/members/:userId', protect, removeBoardMember)
+router.put(
+  '/:id/members/:userId',
+  protect,
+  checkBoardAccess(['admin']),
+  updateBoardMemberRole
+)
+
+router.delete(
+  '/:id/members/:userId',
+  protect,
+  checkBoardAccess(['admin']),
+  removeBoardMember
+)
 
 // ----------------------------------
 // ------- Column Management --------
 // ----------------------------------
 
-/**
- * @route   POST /boards/:id/columns
- * @desc    Add a new column to a specific board (requires authentication)
- * @access  Private
- */
-router.post('/:id/columns', protect, addColumn)
+router.post(
+  '/:id/columns',
+  protect,
+  checkBoardAccess(['admin', 'member']),
+  addColumn
+)
 
-/**
- * @route   PUT /boards/:id/columns/:columnId
- * @desc    Update a specific column in a board (requires authentication)
- * @access  Private
- */
-router.put('/:id/columns/:columnId', protect, updateColumn)
+router.put(
+  '/:id/columns/:columnId',
+  protect,
+  checkBoardAccess(['admin', 'member']),
+  updateColumn
+)
 
-/**
- * @route   DELETE /boards/:id/columns/:columnId
- * @desc    Delete a specific column from a board (requires authentication)
- * @access  Private
- */
-router.delete('/:id/columns/:columnId', protect, deleteColumn)
+router.delete(
+  '/:id/columns/:columnId',
+  protect,
+  checkBoardAccess(['admin', 'member']),
+  deleteColumn
+)
+
+// ----------------------------------
+// -------- Task Management ---------
+// ----------------------------------
+
+router.post(
+  '/:id/tasks',
+  protect,
+  checkBoardAccess(['admin', 'member']),
+  createTask
+)
+
+router.get(
+  '/:id/tasks',
+  protect,
+  checkBoardAccess(['admin', 'member', 'viewer']),
+  getAllTasks
+)
+
+// ----------------------------------
+// --------- Label Routes ----------
+// ----------------------------------
+
+router.get(
+  '/:boardId/labels',
+  protect,
+  checkBoardAccess(['admin', 'member', 'viewer']),
+  getAllLabels
+)
 
 export default router
