@@ -51,7 +51,7 @@ export const updateTask = async (req, res) => {
     // Check board access
     const board = await Board.findById(task.boardId)
     const member = board.members.find(
-      (m) => m.userId.toString() === req.user.id
+      (m) => m.userId.toString() === req.user._id.toString()
     )
     if (!member || member.role === 'viewer') {
       return res.status(403).json({ message: 'Access denied' })
@@ -221,12 +221,12 @@ export const addChecklistItemToTask = async (req, res) => {
     const userId = req.user._id
 
     if (!text) {
-      res.status(404).json({ message: 'Text is required' })
+      return res.status(404).json({ message: 'Text is required' })
     }
 
     const task = await Task.findById(taskId)
     if (!task) {
-      res.status(404).json({ message: 'Task not found' })
+      return res.status(404).json({ message: 'Task not found' })
     }
 
     // Check board access

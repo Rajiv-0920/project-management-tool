@@ -3,7 +3,7 @@ import Comment from '../models/Comment.js'
 export const updateComment = async (req, res) => {
   try {
     const { commentId } = req.params
-    const { message, attachments = [] } = req.body
+    const { message } = req.body
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ message: 'Comment message is required' })
@@ -13,13 +13,10 @@ export const updateComment = async (req, res) => {
     if (!comment) return res.status(404).json({ message: 'Comment not found' })
 
     comment.content = message
-    comment.attachments = attachments
 
     await comment.save()
 
-    res
-      .status(200)
-      .json({ comment }, { message: 'Comment updated successfully' })
+    res.status(200).json({ comment, message: 'Comment updated successfully' })
   } catch (error) {
     console.error('Update comment error:', error)
     res.status(500).json({ message: 'Server error' })
