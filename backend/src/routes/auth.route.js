@@ -4,6 +4,7 @@ import {
   login,
   logout,
   register,
+  resendVerificationEmail,
   updateMyProfile,
   verifyEmail,
 } from '../controllers/authController.js'
@@ -32,5 +33,6 @@ router.post('/logout', logout)
 router.get('/me', protect, getMyProfile)
 router.post('/me', protect, upload.single('avatar'), updateMyProfile)
 router.get('/verify-email', verifyEmail)
+router.post('/resend-verification', protect, resendVerificationEmail)
 
 export default router

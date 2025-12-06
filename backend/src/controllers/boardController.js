@@ -191,23 +191,29 @@ export const archiveBoard = async (req, res) => {
 export const listBoardMembers = async (req, res) => {
   const { id } = req.params
   try {
-    const board = await Board.findById(id).populate(
-      'members.userId',
-      'name email avatar'
-    )
+    const board = await Board.findById(id).populate({
+      path: 'members.userId',
+      select: 'name email avatar',
+    })
+
     if (!board) {
       return res.status(404).json({ message: 'Board not found' })
     }
 
-    // Check if the user is a member or owner
-    const isMember = board.members.some((member) =>
-      member.userId._id.equals(req.user._id)
-    )
-    if (!board.owner.equals(req.user._id) && !isMember) {
-      return res.status(403).json({ message: 'Access denied' })
-    }
+    const formattedMembers = board.members.map((member) => {
+      if (!member.userId) return member
 
-    res.status(200).json(board.members)
+      return {
+        _id: member.userId._id, // The User's ID
+        membershipId: member._id, // The Membership subdocument ID (optional)
+        name: member.userId.name,
+        email: member.userId.email,
+        avatar: member.userId.avatar,
+        role: member.role, // Kept at the top level
+      }
+    })
+
+    res.status(200).json(formattedMembers)
   } catch (error) {
     console.error('Error listing board members:', error)
     res.status(500).json({ message: 'Server error' })
