@@ -64,6 +64,9 @@ export const register = async (req, res) => {
       // The user can request a new verification link later.
     }
 
+    // Generate Token
+    const token = generateToken(res, { id: newUser._id })
+
     res.status(201).json({
       message:
         'Registration successful. Please check your email to verify account.',
@@ -72,6 +75,7 @@ export const register = async (req, res) => {
         name: newUser.name,
         email: newUser.email,
       },
+      token,
     })
   } catch (error) {
     console.error('Registration error:', error)
@@ -194,14 +198,20 @@ export const getMyProfile = async (req, res) => {
 
 export const updateMyProfile = async (req, res) => {
   try {
+    const { name, bio } = req.body
     const user = await User.findById(req.user._id)
     if (!user) {
       return res.status(404).json({ message: 'User not found' })
     }
 
-    // 1. Handle Text Fields
-    if (req.body.name) user.name = req.body.name
-    if (req.body.bio) user.bio = req.body.bio
+    if (bio.length >= 250) {
+      return res
+        .status(400)
+        .json({ message: 'Bio must be less than 250 characters' })
+    }
+
+    if (name) user.name = name
+    if (bio) user.bio = bio
 
     // 2. Handle Image Upload (The Cloudinary Part)
     if (req.file) {
@@ -236,6 +246,62 @@ export const updateMyProfile = async (req, res) => {
     })
   } catch (error) {
     console.error('Update profile error:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export const resendVerificationEmail = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    // If already verified
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'Email already verified' })
+    }
+
+    // Generate a new token
+    const verificationToken = crypto.randomBytes(32).toString('hex')
+    const verificationTokenHash = crypto
+      .createHash('sha256')
+      .update(verificationToken)
+      .digest('hex')
+
+    // Update user with new token + 24h expiration
+    user.verificationToken = verificationTokenHash
+    user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000
+
+    await user.save()
+
+    // Create the new URL
+    const verifyUrl = `http://localhost:5000/api/auth/verify-email?token=${verificationToken}`
+
+    // Send email again
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Verify your email (Resent)',
+        message: `
+          <h1>Verify Your Email</h1>
+          <p>You requested a new verification link. Click below:</p>
+          <a href="${verifyUrl}" clicktracking=off>${verifyUrl}</a>
+        `,
+      })
+    } catch (emailError) {
+      console.error('Resend email error:', emailError)
+      return res.status(500).json({
+        message: 'Failed to send verification email. Try again later.',
+      })
+    }
+
+    res.json({
+      message: 'Verification email resent successfully.',
+    })
+  } catch (error) {
+    console.error('Resend verification error:', error)
     res.status(500).json({ message: 'Server error' })
   }
 }
